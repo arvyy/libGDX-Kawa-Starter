@@ -1,0 +1,97 @@
+<project>
+
+	<!-- change it -->
+	<property 
+			name="kawa-jar"
+			value="/opt/kawa/kawa-3.1/lib/kawa.jar"/>
+
+	<property
+			name="src-dir"
+			value="${basedir}/src"/>
+
+	<property
+			name="test-dir"
+			value="${basedir}/test"/>
+
+	<property
+			name="test-log-dir"
+			value="${basedir}/testlog/"/>
+
+	<property
+			name="target-dir"
+			value="${basedir}/target"/>
+
+	<property
+			name="dist-jar"
+			value="${basedir}/dist/game.jar"/>
+
+	<property
+			name="test"
+			value="all"/>
+
+	<target name="check-dependencies">
+		<available file="${target-dir}/dependency" type="dir" property="dependencies.present"/>
+	</target>
+
+	<target name="download-dependencies" depends="check-dependencies" unless="dependencies.present">
+		<exec executable="mvn">
+			<arg line="dependency:copy-dependencies"/>
+		</exec>
+	</target>
+
+	<target name="run" depends="download-dependencies">
+		<java classname="kawa.repl" spawn="true" fork="true">
+			<arg line="${src-dir}/main.scm"/>
+			<classpath>
+				<path>
+					<fileset dir="${target-dir}/dependency" includes="*.jar" />
+				</path>
+				<pathelement location="${kawa-jar}"/>
+			</classpath>
+		</java>
+	</target>
+
+	<target name="test" depends="download-dependencies">
+		<mkdir dir="${test-log-dir}"/>
+		<java classname="kawa.repl" fork="true" dir="${test-log-dir}">
+			<arg line="${test-dir}/${test}.scm"/>
+			<jvmarg line="-Dkawa.import.path=${src-dir}"/>
+			<classpath>
+				<path>
+					<fileset dir="${target-dir}/dependency" includes="*.jar" />
+				</path>
+				<pathelement location="${kawa-jar}"/>
+			</classpath>
+		</java>
+	</target>
+
+	<target name="compile" depends="download-dependencies">
+		<java classname="kawa.repl" fork="true" dir="${src-dir}">
+			<arg line="-d ${target-dir}/dist -C main.scm"/>
+			<classpath>
+				<path>
+					<fileset dir="${target-dir}/dependency" includes="*.jar" />
+				</path>
+				<pathelement location="${kawa-jar}"/>
+			</classpath>
+		</java>
+
+		<jar jarfile="${dist-jar}" basedir="${target-dir}/dist">
+			<zipgroupfileset dir="${target-dir}/dependency">
+				<include name="**/*.jar"/>
+			</zipgroupfileset>
+			<zipfileset src="${kawa-jar}"/>
+			<manifest>
+				<attribute name="Main-Class" value="main"/>
+			</manifest>
+		</jar>
+
+	</target>
+
+	<target name="clean">
+		<delete dir="${target-dir}"/>
+		<delete file="${dist-jar}"/>
+		<delete dir="${test-log-dir}"/>
+	</target>
+
+</project>
